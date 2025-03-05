@@ -1,7 +1,7 @@
 import { useContractWrite } from 'wagmi';
 import ChamaFactoryABI from '../contracts/ChamaFactoryABI.json';
 
-const CHAMA_FACTORY_ADDRESS = '0xEe35B29a7A7AE6B7fB565E862C7F275eB7DF48d2';
+const CHAMA_FACTORY_ADDRESS = '0x154d1E286A9A3c1d4B1e853A9a7e61b1e934B756';
 
 export const useCreateChama = (params) => {
   // Validate required parameters
