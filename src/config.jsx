@@ -1,4 +1,4 @@
-// Replace entire config.jsx with:
+
 import { createConfig, http } from 'wagmi'
 import { mainnet, scrollSepolia } from 'wagmi/chains'
 import { getDefaultConfig } from 'connectkit'
