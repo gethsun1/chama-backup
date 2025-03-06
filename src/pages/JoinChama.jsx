@@ -1,5 +1,5 @@
 // src/pages/JoinChama.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Grid,
@@ -21,6 +21,40 @@ import ChamaFactoryABI from "../contracts/ChamaFactoryABI.json";
 
 const contractAddress = "0x154d1E286A9A3c1d4B1e853A9a7e61b1e934B756";
 
+// Generic safe conversion: returns an empty string if null/undefined,
+// otherwise returns val.toString() if available.
+const safeConvert = (val) => {
+  if (val === null || val === undefined) return "";
+  return typeof val.toString === "function" ? val.toString() : val;
+};
+
+// Helper function to format cycle duration
+const formatCycleDuration = (duration) => {
+  const d = Number(duration);
+  if (d === 86400) return "Daily";
+  if (d === 604800) return "Weekly";
+  if (d === 2592000) return "Monthly";
+  return `${d}`; // fallback: display the number as a string
+};
+
+// Robust formatter for a Chama item: expects an array of 14 values.
+const formatChama = (chamaArray) => ({
+  id: parseInt(safeConvert(chamaArray[0])),
+  creator: safeConvert(chamaArray[1]),
+  name: safeConvert(chamaArray[2]),
+  description: safeConvert(chamaArray[3]),
+  depositAmount: safeConvert(chamaArray[4]),
+  contributionAmount: safeConvert(chamaArray[5]),
+  penalty: safeConvert(chamaArray[6]),
+  maxMembers: safeConvert(chamaArray[7]),
+  membersCount: safeConvert(chamaArray[8]),
+  cycleDuration: safeConvert(chamaArray[9]),
+  currentRound: safeConvert(chamaArray[10]),
+  currentCycle: safeConvert(chamaArray[11]),
+  nextCycleStart: safeConvert(chamaArray[12]),
+  isActive: chamaArray[13],
+});
+
 const JoinChama = () => {
   const [open, setOpen] = useState(false);
   const [selectedChama, setSelectedChama] = useState(null);
@@ -34,20 +68,35 @@ const JoinChama = () => {
   });
 
   // 2. Batch fetch all Chama details using useReadContracts
-   const calls =
-      chamaCount && !isNaN(parseInt(chamaCount.toString()))
-        ? Array.from({ length: parseInt(chamaCount.toString()) }, (_, index) => ({
-          address: contractAddress,
-          abi: ChamaFactoryABI,
-          functionName: "chamas",
-          args: [index + 1],
-        }))
+  const calls =
+    chamaCount && !isNaN(parseInt(chamaCount.toString()))
+      ? Array.from(
+          { length: parseInt(chamaCount.toString()) },
+          (_, index) => ({
+            address: contractAddress,
+            abi: ChamaFactoryABI,
+            functionName: "chamas",
+            args: [index + 1],
+          })
+        )
       : [];
 
-  const { data: chamas, isLoading: chamasLoading } = useReadContracts({
+  const { data: rawChamas, isLoading: chamasLoading } = useReadContracts({
     contracts: calls,
     watch: true,
   });
+
+  // Log the raw data for debugging
+  useEffect(() => {
+    console.log("Raw Chamas:", rawChamas);
+  }, [rawChamas]);
+
+  // Format the raw chamas:
+  // Each item in rawChamas is an object with a "result" property containing the array of values.
+  const chamas =
+    rawChamas && Array.isArray(rawChamas)
+      ? rawChamas.map((item) => formatChama(item.result))
+      : [];
 
   // 3. Prepare the write call for joining a Chama using useWriteContract
   const { write: joinWrite, isLoading: joinLoading } = useWriteContract({
@@ -56,9 +105,9 @@ const JoinChama = () => {
     functionName: "joinChama",
     args: [selectedChama ? selectedChama.id : 0],
     overrides: {
+      // Ensure depositAmount is passed as the value (already a string from safeConvert)
       value: selectedChama ? selectedChama.depositAmount : undefined,
     },
-    // In Wagmi v2, the hook automatically handles the prepare step
     onError(error) {
       console.error("Join error:", error);
     },
@@ -84,11 +133,7 @@ const JoinChama = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{ fontWeight: "bold", mb: 3 }}
-      >
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold", mb: 3 }}>
         Available Chamas
       </Typography>
       <Grid container spacing={4}>
@@ -108,7 +153,7 @@ const JoinChama = () => {
               >
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: "medium" }}>
-                    {chama.name}
+                    {chama.name || "No Name"}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -116,12 +161,12 @@ const JoinChama = () => {
                     gutterBottom
                     sx={{ mt: 1, mb: 2 }}
                   >
-                    {chama.description}
+                    {chama.description || "No Description"}
                   </Typography>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
                     <CalendarToday fontSize="small" color="action" />
                     <Typography variant="body2">
-                      Cycle Duration: {chama.cycleDuration} sec
+                      Cycle: {formatCycleDuration(chama.cycleDuration)}
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -130,10 +175,24 @@ const JoinChama = () => {
                       Deposit: {chama.depositAmount}
                     </Typography>
                   </Box>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Groups fontSize="small" color="action" />
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="body2">
+                      Contribution: {chama.contributionAmount}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="body2">
+                      Penalty: {chama.penalty}%
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mb: 1 }}>
                     <Typography variant="body2">
                       Max Members: {chama.maxMembers}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2">
+                      Members Joined: {chama.membersCount}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -161,18 +220,18 @@ const JoinChama = () => {
         <Fade in={open} timeout={500}>
           <Box>
             <DialogTitle sx={{ fontWeight: "bold" }}>
-              {selectedChama?.name}
+              {selectedChama?.name || "No Name"}
             </DialogTitle>
             <DialogContent dividers>
               <Typography variant="body1" gutterBottom>
-                {selectedChama?.description}
+                {selectedChama?.description || "No Description"}
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary">
                   Cycle Duration:
                 </Typography>
                 <Typography variant="body2">
-                  {selectedChama?.cycleDuration} seconds
+                  {formatCycleDuration(selectedChama?.cycleDuration)}
                 </Typography>
               </Box>
               <Box sx={{ mt: 2 }}>
@@ -205,6 +264,14 @@ const JoinChama = () => {
                 </Typography>
                 <Typography variant="body2">
                   {selectedChama?.maxMembers}
+                </Typography>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Members Joined:
+                </Typography>
+                <Typography variant="body2">
+                  {selectedChama?.membersCount}
                 </Typography>
               </Box>
             </DialogContent>
