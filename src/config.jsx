@@ -21,26 +21,24 @@ const metadata = {
 };
 
 
+
 const scrollSepolia = {
   id: 534351,
-  name: 'Scroll Sepolia',
-  network: 'scroll-sepolia',
+  name: 'Scroll Sepolia Testnet',
+  network: 'scroll-sepolia-testnet',
   nativeCurrency: {
     decimals: 18,
     name: 'Ether',
     symbol: 'ETH',
   },
   rpcUrls: {
-    default: {
-      http: ['https://sepolia-rpc.scroll.io'],
-    },
-    public: {
-      http: ['https://sepolia-rpc.scroll.io'],
+    default: { 
+      http: ['https://rpc.ankr.com/scroll_sepolia_testnet'],
     },
   },
   blockExplorers: {
     default: {
-      name: 'ScrollScan',
+      name: 'ScrollScan Sepolia',
       url: 'https://sepolia.scrollscan.com',
     },
   },
@@ -48,7 +46,7 @@ const scrollSepolia = {
 };
 
 
-const networks = [scrollSepolia]; 
+const networks = [scrollSepolia, mainnet]; 
 
 
 const wagmiAdapter = new WagmiAdapter({

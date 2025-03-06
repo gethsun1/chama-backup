@@ -24,7 +24,7 @@ import ChamaFactoryABI from '../contracts/ChamaFactoryABI.json';
 const contractAddress = "0x154d1E286A9A3c1d4B1e853A9a7e61b1e934B756";
 
 // Expected chain id for Scroll Sepolia Testnet (adjust if needed)
-const EXPECTED_CHAIN_ID = 534353;
+const EXPECTED_CHAIN_ID = 534351;
 
 const CreateChama = () => {
   // Form state
