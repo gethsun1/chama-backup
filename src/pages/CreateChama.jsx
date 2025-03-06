@@ -59,28 +59,21 @@ const CreateChama = () => {
   };
 
   // Prepare the write contract hook for creating a Chama
-  const { write: createChamaWrite, isLoading: createLoading, error } = useWriteContract({
-    mode: "recklesslyUnprepared", // Allow dynamic args on call time.
-    address: contractAddress,
-    abi: ChamaFactoryABI,
-    functionName: 'createChama',
-    mutation: {
-      onError: (error) => {
-        console.error("[TX ERROR]", error);
-        console.log("Error details:", {
-          cause: error.cause,
-          metaMessages: error.metaMessages,
-          details: error.details,
-        });
-      },
-      onSuccess: (txHash) => {
-        console.log("[TX SUCCESS] Hash:", txHash);
-      },
-      onSettled: () => {
-        console.log("[TX SETTLED]");
-      }
-    },
-  });
+  const { 
+  write: createChamaWrite, 
+  isLoading: createLoading,
+  error,
+} = useWriteContract({
+  address: contractAddress,
+  abi: ChamaFactoryABI,
+  functionName: 'createChama',
+  onError: (error) => {
+    console.error("Transaction error:", error);
+  },
+  onSuccess: (hash) => {
+    console.log("Transaction hash:", hash);
+  }
+});
 
   // Helper function for cycle duration in seconds
   const getCycleDuration = (cycle) => {
