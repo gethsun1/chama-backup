@@ -1,5 +1,5 @@
 // src/pages/CreateChama.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -22,8 +22,7 @@ import { parseUnits } from 'viem';
 import ChamaFactoryABI from '../contracts/ChamaFactoryABI.json';
 
 const contractAddress = "0x154d1E286A9A3c1d4B1e853A9a7e61b1e934B756";
-
-// Expected chain id for Scroll Sepolia Testnet (adjust if needed)
+// Expected chain id for Scroll Sepolia Testnet
 const EXPECTED_CHAIN_ID = 534351;
 
 const CreateChama = () => {
@@ -41,7 +40,17 @@ const CreateChama = () => {
 
   // Wallet and network hooks
   const { address, isConnected } = useAccount();
-  const  chainId = useChainId();
+  const chainId = useChainId();
+  
+  // Debug logging wallet status
+  useEffect(() => {
+    console.log("[DEBUG] Wallet Status:", { 
+      isConnected, 
+      chainId, 
+      expectedChain: EXPECTED_CHAIN_ID,
+      address
+    });
+  }, [isConnected, chainId, address]);
 
   // Handlers for maximum members stepper
   const handleIncrementMaxMembers = () => setMaxMembers(prev => prev + 1);
@@ -50,76 +59,95 @@ const CreateChama = () => {
   };
 
   // Prepare the write contract hook for creating a Chama
-  const { write: createChamaWrite, isLoading: createLoading } = useWriteContract({
+  const { write: createChamaWrite, isLoading: createLoading, error } = useWriteContract({
+    mode: "recklesslyUnprepared", // Allow dynamic args on call time.
     address: contractAddress,
     abi: ChamaFactoryABI,
     functionName: 'createChama',
-    onError(error) {
-      console.error("Create Chama error:", error);
-    },
-    onSuccess(data) {
-      console.log("Chama created successfully:", data);
+    mutation: {
+      onError: (error) => {
+        console.error("[TX ERROR]", error);
+        console.log("Error details:", {
+          cause: error.cause,
+          metaMessages: error.metaMessages,
+          details: error.details,
+        });
+      },
+      onSuccess: (txHash) => {
+        console.log("[TX SUCCESS] Hash:", txHash);
+      },
+      onSettled: () => {
+        console.log("[TX SETTLED]");
+      }
     },
   });
 
+  // Helper function for cycle duration in seconds
+  const getCycleDuration = (cycle) => {
+    const durations = {
+      daily: 86400,
+      weekly: 604800,
+      monthly: 2592000,
+    };
+    return durations[cycle.toLowerCase()] || 86400;
+  };
+
   // Handler for form submission
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    try {
+      console.log("[SUBMIT] Initiating creation...");
 
-    // Ensure wallet is connected and on the correct network
-    if (!isConnected) {
-      alert("Please connect your wallet.");
-      return;
-    }
-    if (chainId !== EXPECTED_CHAIN_ID) {
-      alert("Please switch to the Scroll Sepolia Testnet.");
-      return;
-    }
+      if (!isConnected) {
+        alert("Please connect your wallet.");
+        return;
+      }
+      if (chainId !== EXPECTED_CHAIN_ID) {
+        alert("Please switch to the Scroll Sepolia Testnet.");
+        return;
+      }
+      if (!contributionCycle || !depositAmount || !contributionAmount) {
+        alert("Missing required fields");
+        return;
+      }
 
-    // Convert deposit and contribution amounts from ETH to Wei
-    const depositInWei = parseUnits(depositAmount, "ether");
-    const contributionInWei = parseUnits(contributionAmount, "ether");
+      // Validate numeric values
+      const depositValue = Number(depositAmount);
+      const contributionValue = Number(contributionAmount);
+      if (isNaN(depositValue)) throw new Error("Invalid deposit amount");
+      if (isNaN(contributionValue)) throw new Error("Invalid contribution amount");
 
-    // Map contribution cycle to seconds
-    let cycleDuration;
-    switch (contributionCycle.toLowerCase()) {
-      case 'daily':
-        cycleDuration = 86400;
-        break;
-      case 'weekly':
-        cycleDuration = 604800;
-        break;
-      case 'monthly':
-        cycleDuration = 2592000;
-        break;
-      default:
-        cycleDuration = 86400; // default to daily
-    }
+      // Convert amounts from ETH to Wei using viem's parseUnits
+      const depositInWei = parseUnits(depositValue.toFixed(18), 18);
+      const contributionInWei = parseUnits(contributionValue.toFixed(18), 18);
 
-    // Call the contract write function
-    createChamaWrite?.({
-      args: [
-        chamaName,
-        description,
-        depositInWei,
-        contributionInWei,
-        penalty,
+      console.log("[VALUES] Converted:", {
+        depositInWei: depositInWei.toString(),
+        contributionInWei: contributionInWei.toString(),
+        penalty: Math.round(penalty),
         maxMembers,
-        cycleDuration,
-      ],
-    });
+      });
 
-    console.log({
-      chamaName,
-      description,
-      startDateTime,
-      contributionCycle,
-      depositAmount,
-      contributionAmount,
-      penalty,
-      maxMembers,
-      rules,
-    });
+      // Execute contract write
+      if (!createChamaWrite) {
+        throw new Error("Write function not initialized");
+      }
+
+      createChamaWrite({
+        args: [
+          chamaName.trim(),
+          description.trim(),
+          depositInWei,
+          contributionInWei,
+          Math.round(penalty),
+          maxMembers,
+          getCycleDuration(contributionCycle),
+        ],
+      });
+    } catch (error) {
+      console.error("[VALIDATION ERROR]", error);
+      alert(`Submission failed: ${error.message}`);
+    }
   };
 
   // Handler for cancellation
@@ -255,23 +283,13 @@ const CreateChama = () => {
                   Maximum Members
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <IconButton
-                    onClick={handleDecrementMaxMembers}
-                    aria-label="Decrease maximum members"
-                  >
+                  <IconButton onClick={handleDecrementMaxMembers} aria-label="Decrease maximum members">
                     <Remove />
                   </IconButton>
-                  <Typography
-                    variant="body1"
-                    sx={{ mx: 2 }}
-                    aria-label="Maximum Members Count"
-                  >
+                  <Typography variant="body1" sx={{ mx: 2 }} aria-label="Maximum Members Count">
                     {maxMembers}
                   </Typography>
-                  <IconButton
-                    onClick={handleIncrementMaxMembers}
-                    aria-label="Increase maximum members"
-                  >
+                  <IconButton onClick={handleIncrementMaxMembers} aria-label="Increase maximum members">
                     <Add />
                   </IconButton>
                 </Box>
@@ -293,10 +311,7 @@ const CreateChama = () => {
                 variant="outlined"
                 color="secondary"
                 onClick={handleCancel}
-                sx={{
-                  transition: 'all 0.3s ease',
-                  '&:hover': { transform: 'scale(1.02)' },
-                }}
+                sx={{ transition: 'all 0.3s ease', '&:hover': { transform: 'scale(1.02)' } }}
                 aria-label="Cancel"
               >
                 Cancel
@@ -305,10 +320,7 @@ const CreateChama = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
-                sx={{
-                  transition: 'all 0.3s ease',
-                  '&:hover': { transform: 'scale(1.02)' },
-                }}
+                sx={{ transition: 'all 0.3s ease', '&:hover': { transform: 'scale(1.02)' } }}
                 aria-label="Create Chama"
                 disabled={!isFormEnabled || createLoading}
               >
