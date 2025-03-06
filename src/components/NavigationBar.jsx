@@ -1,4 +1,3 @@
-// src/components/NavigationBar.jsx
 import React, { useState } from "react";
 import {
   AppBar,
@@ -17,23 +16,13 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
-import ConnectButton from "../ConnectButton";
-
-const truncateAddress = (address) => {
-  if (!address) return "";
-  return address.slice(0, 6) + "..." + address.slice(-4);
-};
+import { ConnectButton } from "connectkit";
 
 const NavigationBar = () => {
   const { address, isConnected } = useAccount();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const toggleDrawer = (open) => () => {
-    setDrawerOpen(open);
-  };
 
   const navLinks = [
     { title: "Home", path: "/" },
@@ -41,6 +30,10 @@ const NavigationBar = () => {
     { title: "Join Chama", path: "/join-chama" },
     { title: "Dashboard", path: "/dashboard" },
   ];
+
+  const toggleDrawer = (open) => () => {
+    setDrawerOpen(open);
+  };
 
   return (
     <AppBar position="static" sx={{ backgroundColor: "black" }}>
@@ -67,8 +60,8 @@ const NavigationBar = () => {
               <Box
                 sx={{
                   width: 250,
-                  bgcolor: "white",
-                  height: "100vh",
+                  bgcolor: "background.paper",
+                  height: "100%",
                 }}
                 role="presentation"
                 onClick={toggleDrawer(false)}
@@ -82,22 +75,17 @@ const NavigationBar = () => {
                       component={Link}
                       to={link.path}
                       sx={{
-                        transition:
-                          "transform 0.3s, background-color 0.3s, box-shadow 0.3s",
-                        borderRadius: 1,
+                        py: 2,
                         "&:hover": {
-                          bgcolor: "#e0e0e0",
-                          transform: "scale(1.03)",
-                          boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
+                          backgroundColor: "action.hover",
                         },
                       }}
                     >
                       <ListItemText
                         primary={link.title}
-                        sx={{
-                          color: "black",
-                          fontWeight: "bold",
-                          textAlign: "center",
+                        primaryTypographyProps={{
+                          fontWeight: "medium",
+                          color: "text.primary",
                         }}
                       />
                     </ListItem>
@@ -112,46 +100,35 @@ const NavigationBar = () => {
               key={index}
               component={Link}
               to={link.path}
-              sx={{ color: "white", textTransform: "none" }}
+              sx={{ 
+                color: "white", 
+                textTransform: "none",
+                mx: 1,
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)'
+                }
+              }}
             >
               {link.title}
             </Button>
           ))
         )}
 
-        {isConnected ? (
-          <Button
-            variant="outlined"
-            sx={{
-              backgroundColor: "black",
-              color: "white",
-              border: "2px solid white",
-              "&:hover": { backgroundColor: "#333" },
-              borderRadius: "8px",
-              padding: "8px 16px",
-              textTransform: "none",
-              ml: 2,
-            }}
-          >
-            {truncateAddress(address)}
-          </Button>
-        ) : (
-          <Button
-            variant="outlined"
-            sx={{
-              backgroundColor: "black",
-              color: "white",
-              border: "2px solid white",
-              "&:hover": { backgroundColor: "#333" },
-              borderRadius: "8px",
-              padding: "8px 16px",
-              textTransform: "none",
-              ml: 2,
-            }}
-          >
-            <ConnectButton />
-          </Button>
-        )}
+        <Box sx={{ 
+          ml: 2,
+          '& button': {
+            borderRadius: '8px !important',
+            padding: '8px 16px !important',
+            border: '2px solid white !important',
+            backgroundColor: 'black !important',
+            color: 'white !important',
+            '&:hover': {
+              backgroundColor: '#333 !important'
+            }
+          }
+        }}>
+          <ConnectButton />
+        </Box>
       </Toolbar>
     </AppBar>
   );
