@@ -17,60 +17,99 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Add, Remove } from '@mui/icons-material';
-// Import parseEther from viem
-import { parseEther } from 'viem';
-import { useCreateChama } from '../hooks/useChamaFactory';
+import { useAccount, useChainId, useWriteContract } from 'wagmi';
+import { parseUnits } from 'viem';
+import ChamaFactoryABI from '../contracts/ChamaFactoryABI.json';
+
+const contractAddress = "0x154d1E286A9A3c1d4B1e853A9a7e61b1e934B756";
+
+// Expected chain id for Scroll Sepolia Testnet (adjust if needed)
+const EXPECTED_CHAIN_ID = 534353;
 
 const CreateChama = () => {
-  // Form states
+  // Form state
   const [chamaName, setChamaName] = useState('');
   const [description, setDescription] = useState('');
   const [startDateTime, setStartDateTime] = useState(new Date());
-  const [contributionCycle, setContributionCycle] = useState('daily'); // default to daily
-  const [depositAmount, setDepositAmount] = useState(''); // as string
-  const [contributionAmount, setContributionAmount] = useState(''); // as string
+  const [contributionCycle, setContributionCycle] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [contributionAmount, setContributionAmount] = useState('');
   const [penalty, setPenalty] = useState(0);
   const [maxMembers, setMaxMembers] = useState(1);
   const [rules, setRules] = useState('');
   const [formVisible, setFormVisible] = useState(true);
 
-  // Helper function to convert contribution cycle to seconds
-  const getCycleDurationInSeconds = (cycle) => {
-    switch (cycle) {
-      case 'weekly':
-        return 86400 * 7; // 7 days
-      case 'monthly':
-        return 86400 * 30; // ~30 days
-      case 'daily':
-      default:
-        return 86400; // 1 day
-    }
-  };
+  // Wallet and network hooks
+  const { address, isConnected } = useAccount();
+  const  chainId = useChainId();
 
-  // Convert the selected cycle to seconds
-  const cycleDurationInSeconds = getCycleDurationInSeconds(contributionCycle);
-
-  // Prepare contract parameters (convert ETH values to wei using parseEther)
-  const params = {
-    name: chamaName,
-    description,
-    depositAmount: depositAmount ? parseEther(depositAmount.toString()) : undefined,
-    contributionAmount: contributionAmount ? parseEther(contributionAmount.toString()) : undefined,
-    penalty: BigInt(penalty),
-    maxMembers: BigInt(maxMembers),
-    cycleDuration: BigInt(cycleDurationInSeconds),
-  };
-
-  const { write, isLoading, error } = useCreateChama(params);
-
+  // Handlers for maximum members stepper
   const handleIncrementMaxMembers = () => setMaxMembers(prev => prev + 1);
   const handleDecrementMaxMembers = () => {
     if (maxMembers > 1) setMaxMembers(prev => prev - 1);
   };
 
+  // Prepare the write contract hook for creating a Chama
+  const { write: createChamaWrite, isLoading: createLoading } = useWriteContract({
+    address: contractAddress,
+    abi: ChamaFactoryABI,
+    functionName: 'createChama',
+    onError(error) {
+      console.error("Create Chama error:", error);
+    },
+    onSuccess(data) {
+      console.log("Chama created successfully:", data);
+    },
+  });
+
+  // Handler for form submission
   const handleSubmit = (event) => {
     event.preventDefault();
-    console.log("Creating Chama with data:", {
+
+    // Ensure wallet is connected and on the correct network
+    if (!isConnected) {
+      alert("Please connect your wallet.");
+      return;
+    }
+    if (chainId !== EXPECTED_CHAIN_ID) {
+      alert("Please switch to the Scroll Sepolia Testnet.");
+      return;
+    }
+
+    // Convert deposit and contribution amounts from ETH to Wei
+    const depositInWei = parseUnits(depositAmount, "ether");
+    const contributionInWei = parseUnits(contributionAmount, "ether");
+
+    // Map contribution cycle to seconds
+    let cycleDuration;
+    switch (contributionCycle.toLowerCase()) {
+      case 'daily':
+        cycleDuration = 86400;
+        break;
+      case 'weekly':
+        cycleDuration = 604800;
+        break;
+      case 'monthly':
+        cycleDuration = 2592000;
+        break;
+      default:
+        cycleDuration = 86400; // default to daily
+    }
+
+    // Call the contract write function
+    createChamaWrite?.({
+      args: [
+        chamaName,
+        description,
+        depositInWei,
+        contributionInWei,
+        penalty,
+        maxMembers,
+        cycleDuration,
+      ],
+    });
+
+    console.log({
       chamaName,
       description,
       startDateTime,
@@ -80,17 +119,16 @@ const CreateChama = () => {
       penalty,
       maxMembers,
       rules,
-      cycleDuration: cycleDurationInSeconds,
     });
-    if (write) {
-      write();
-      console.log("Transaction submitted");
-    } else {
-      console.error("Write function is not available. Ensure all required inputs are provided and the contract configuration is correct.");
-    }
   };
 
-  const handleCancel = () => console.log('Creation cancelled');
+  // Handler for cancellation
+  const handleCancel = () => {
+    console.log('Creation cancelled');
+  };
+
+  // Determine if form can be submitted
+  const isFormEnabled = isConnected && chainId === EXPECTED_CHAIN_ID;
 
   return (
     <Container maxWidth="sm" sx={{ mt: 4, mb: 4 }}>
@@ -109,6 +147,16 @@ const CreateChama = () => {
           <Typography variant="body2" gutterBottom color="text.secondary" sx={{ mb: 3 }}>
             Fill out the details below to launch your decentralized savings group.
           </Typography>
+          {!isConnected && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              Please connect your wallet to create a Chama.
+            </Typography>
+          )}
+          {isConnected && chainId !== EXPECTED_CHAIN_ID && (
+            <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+              Please switch to the Scroll Sepolia Testnet.
+            </Typography>
+          )}
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Grid container spacing={3}>
               <Grid item xs={12}>
@@ -169,7 +217,7 @@ const CreateChama = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Deposit Amount (in ETH)"
+                  label="Deposit Amount (ETH)"
                   type="number"
                   fullWidth
                   required
@@ -180,7 +228,7 @@ const CreateChama = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Contribution Amount per Cycle (in ETH)"
+                  label="Contribution Amount per Cycle (ETH)"
                   type="number"
                   fullWidth
                   required
@@ -207,13 +255,23 @@ const CreateChama = () => {
                   Maximum Members
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <IconButton onClick={handleDecrementMaxMembers} aria-label="Decrease maximum members">
+                  <IconButton
+                    onClick={handleDecrementMaxMembers}
+                    aria-label="Decrease maximum members"
+                  >
                     <Remove />
                   </IconButton>
-                  <Typography variant="body1" sx={{ mx: 2 }} aria-label="Maximum Members Count">
+                  <Typography
+                    variant="body1"
+                    sx={{ mx: 2 }}
+                    aria-label="Maximum Members Count"
+                  >
                     {maxMembers}
                   </Typography>
-                  <IconButton onClick={handleIncrementMaxMembers} aria-label="Increase maximum members">
+                  <IconButton
+                    onClick={handleIncrementMaxMembers}
+                    aria-label="Increase maximum members"
+                  >
                     <Add />
                   </IconButton>
                 </Box>
@@ -235,7 +293,10 @@ const CreateChama = () => {
                 variant="outlined"
                 color="secondary"
                 onClick={handleCancel}
-                sx={{ transition: 'all 0.3s ease', '&:hover': { transform: 'scale(1.02)' } }}
+                sx={{
+                  transition: 'all 0.3s ease',
+                  '&:hover': { transform: 'scale(1.02)' },
+                }}
                 aria-label="Cancel"
               >
                 Cancel
@@ -244,17 +305,16 @@ const CreateChama = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
-                sx={{ transition: 'all 0.3s ease', '&:hover': { transform: 'scale(1.02)' } }}
+                sx={{
+                  transition: 'all 0.3s ease',
+                  '&:hover': { transform: 'scale(1.02)' },
+                }}
                 aria-label="Create Chama"
+                disabled={!isFormEnabled || createLoading}
               >
-                {isLoading ? 'Creating...' : 'Create Chama'}
+                {createLoading ? "Creating..." : "Create Chama"}
               </Button>
             </Box>
-            {error && (
-              <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                {error.message}
-              </Typography>
-            )}
           </Box>
         </Paper>
       </Fade>
