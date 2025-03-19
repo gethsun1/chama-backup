@@ -1,44 +1,38 @@
-<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" filter="url(#shadow)">
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Gradient Definitions -->
   <defs>
-    <filter id="shadow">
-      <feDropShadow dx="1" dy="1" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/>
-    </filter>
-    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#000000"/>
-      <stop offset="100%" style="stop-color:#333333"/>
+    <linearGradient id="padGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e90ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066cc;stop-opacity:1" />
     </linearGradient>
     
-    <!-- Text shadow filter -->
-    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.7)"/>
+    <filter id="dropShadow">
+      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.3)"/>
     </filter>
   </defs>
 
-  <!-- Background circle with gradient -->
-  <circle cx="100" cy="100" r="95" fill="url(#gradient)" stroke="#fff" stroke-width="2"/>
+  <!-- Main Pad (Anatomically Shaped) -->
+  <path d="M16 24
+           Q 20 24 22 20
+           Q 20 26 16 26
+           Q 12 26 10 20
+           Q 12 24 16 24"
+        fill="url(#padGradient)"
+        filter="url(#dropShadow)"
+        stroke="#004a99"
+        stroke-width="0.5"/>
 
-  <!-- Geometric pattern -->
-  <path d="M100,30 a70,70 0 1,1 0,140 a70,70 0 1,1 0,-140" 
-        fill="none" 
-        stroke="#fff" 
-        stroke-width="8" 
-        stroke-linecap="round"
-        stroke-dasharray="20 10"/>
+  <!-- Toe Pads -->
+  <ellipse cx="10" cy="10" rx="4" ry="3" fill="url(#padGradient)" transform="rotate(-15 10 10)"/>
+  <ellipse cx="16" cy="6" rx="3.5" ry="4" fill="url(#padGradient)" transform="rotate(5 16 6)"/>
+  <ellipse cx="22" cy="10" rx="4" ry="3" fill="url(#padGradient)" transform="rotate(15 22 10)"/>
 
-  <!-- Intersecting lines -->
-  <g transform="rotate(45 100 100)">
-    <line x1="100" y1="30" x2="100" y2="170" stroke="#fff" stroke-width="3" stroke-opacity="0.8"/>
-    <line x1="30" y1="100" x2="170" y2="100" stroke="#fff" stroke-width="3" stroke-opacity="0.8"/>
-  </g>
+  <!-- Claw Tips -->
+  <path d="M9 8 L10 5" stroke="#004a99" stroke-linecap="round"/>
+  <path d="M15 4 L16 1" stroke="#004a99" stroke-linecap="round"/>
+  <path d="M23 8 L24 5" stroke="#004a99" stroke-linecap="round"/>
 
-  <!-- Enhanced text with shadow -->
-  <text x="100" y="110" font-size="24" fill="#ffffff" text-anchor="middle" 
-        font-family="'Segoe UI', sans-serif" font-weight="700" 
-        filter="url(#textShadow)" letter-spacing="1.5">
-    <tspan x="100" dy="0">CHAMA</tspan>
-    <tspan x="100" dy="24" font-size="18" font-weight="500" letter-spacing="2">DAPP</tspan>
-  </text>
-
-  <!-- Inner circle accent -->
-  <circle cx="100" cy="100" r="20" fill="none" stroke="#fff" stroke-width="2" stroke-opacity="0.6"/>
+  <!-- Texture Details -->
+  <circle cx="16" cy="22" r="1.5" fill="#004a99" opacity="0.3"/>
+  <path d="M14 20 Q15 21 16 20 Q17 21 18 20" stroke="#004a99" fill="none" stroke-width="0.3"/>
 </svg>
